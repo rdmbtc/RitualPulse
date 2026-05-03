@@ -64,6 +64,7 @@ export default function RitualPulsePage() {
       // Validate input
       if (!query || query.length < 10) {
         console.error("Invalid query")
+        alert("Please enter a valid address (minimum 10 characters)")
         setIsSearching(false)
         return
       }
@@ -76,11 +77,18 @@ export default function RitualPulsePage() {
       if (response.ok) {
         const data = await response.json()
         console.log("Address data:", data)
-        setAddressStats(data)
+        
+        // Check if we got valid data
+        if (data && typeof data.totalTransactions !== 'undefined') {
+          setAddressStats(data)
+        } else {
+          console.error("Invalid data structure:", data)
+          alert("Received invalid data from server")
+        }
       } else {
         const errorText = await response.text()
         console.error("Address not found:", response.status, errorText)
-        alert("Address not found or invalid")
+        alert("Address not found. Please check the address and try again.")
       }
     } catch (error) {
       console.error("Search failed:", error)

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { useEffect, useState } from "react"
 
 interface RitualLogo3DProps {
   isPulsing: boolean
@@ -9,8 +10,31 @@ interface RitualLogo3DProps {
 }
 
 export function RitualLogo3D({ isPulsing, intensity }: RitualLogo3DProps) {
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const glowIntensity = 15 + (intensity * 0.5)
   const scale = 1 + (intensity / 200)
+
+  if (!mounted) {
+    return (
+      <div className="relative w-[300px] h-[300px] flex items-center justify-center">
+        <div className="relative w-[200px] h-[200px]">
+          <Image
+            src="/x.png"
+            alt="Ritual"
+            width={200}
+            height={200}
+            className="w-full h-full object-contain"
+            priority
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative w-[300px] h-[300px] flex items-center justify-center">
