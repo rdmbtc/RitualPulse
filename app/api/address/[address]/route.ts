@@ -1,35 +1,34 @@
 import { NextResponse } from "next/server"
+import { createPublicClient, http, type Address } from 'viem'
+import { defineChain } from 'viem'
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-// Use Ritual's own Blockscout instance
-const RITUAL_BLOCKSCOUT_BASE = "https://explorer.ritualfoundation.org/api/v2"
-const BLOCKSCOUT_API_KEY = "proapi_fuIXq0ePVdFOrKwOVt16oONhXzA2blPvgYiUi8QDgNVWoFvSaSj59zVwBu4lzqLre_ebLbYTh"
+// Define Ritual chain
+const ritual = defineChain({
+  id: 7887, // Ritual chain ID
+  name: 'Ritual',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ritual',
+    symbol: 'RITUAL',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.ritualfoundation.org'],
+    },
+  },
+  blockExplorers: {
+    default: { name: 'Explorer', url: 'https://explorer.ritualfoundation.org' },
+  },
+})
 
-interface AddressInfo {
-  hash: string
-  implementations: any[]
-  is_contract: boolean
-  is_verified: boolean
-  name: string | null
-  private_tags: any[]
-  public_tags: any[]
-  watchlist_names: any[]
-  creation_tx_hash?: string
-  creator_address_hash?: string
-}
-
-interface Transaction {
-  hash: string
-  block_number: number
-  timestamp: string
-  from: { hash: string }
-  to: { hash: string } | null
-  value: string
-  gas_used: string
-  type: number
-}
+// Create viem client
+const client = createPublicClient({
+  chain: ritual,
+  transport: http(),
+})
 
 export async function GET(
   request: Request,
@@ -41,170 +40,75 @@ export async function GET(
   console.log("[Address API] Searching for:", address)
 
   try {
-    // Fetch address info
-    console.log("[Address API] Fetching address info...")
-    const addressInfoUrl = `${RITUAL_BLOCKSCOUT_BASE}/addresses/${address}`
-    console.log("[Address API] URL:", addressInfoUrl)
-    
-    const addressInfoResponse = await fetch(addressInfoUrl, {
-      headers: { "Accept": "application/json" },
-      cache: "no-store",
-    })
-    
-    console.log("[Address API] Address info status:", addressInfoResponse.status)
-    const addressInfo = addressInfoResponse.ok ? await addressInfoResponse.json() : null
-    console.log("[Address API] Address info:", addressInfo ? "received" : "null")
-
-    // Fetch transactions
-    console.log("[Address API] Fetching transactions...")
-    const transactionsUrl = `${RITUAL_BLOCKSCOUT_BASE}/addresses/${address}/transactions`
-    console.log("[Address API] Transactions URL:", transactionsUrl)
-    
-    const transactionsResponse = await fetch(transactionsUrl, {
-      headers: { "Accept": "application/json" },
-      cache: "no-store",
-    })
-    
-    console.log("[Address API] Transactions status:", transactionsResponse.status)
-    
-    if (!transactionsResponse.ok) {
-      const errorText = await transactionsResponse.text()
-      console.error("[Address API] Transactions error response:", errorText)
-      console.error("[Address API] Status code:", transactionsResponse.status)
-      
-      // Return empty data instead of throwing error
-      return NextResponse.json({
-        address: address,
-        totalTransactions: 0,
-        agentTransactions: 0,
-        asyncTransactions: 0,
-        firstSeen: Math.floor(Date.now() / 1000),
-        lastSeen: Math.floor(Date.now() / 1000),
-        totalGasUsed: "0",
-        rank: "Initiate",
-        level: 1,
-        achievements: [],
-        isContract: false,
-        isVerified: false,
-        balance: "0",
-        recentTransactions: [],
-        error: `API returned ${transactionsResponse.status}`,
-      })
+    // Validate address format
+    if (!address || !address.startsWith('0x') || address.length !== 42) {
+      return NextResponse.json(
+        { error: "Invalid address format" },
+        { status: 400 }
+      )
     }
-    
-    const transactionsData = await transactionsResponse.json()
-    console.log("[Address API] Transactions data keys:", Object.keys(transactionsData))
-    console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
 
-    const txList = transactionsData?.items || []
-    
-    console.log("[Address API] Transaction count:", txList.length)
+    // Get current block number
+    const currentBlock = await client.getBlockNumber()
+    console.log("[Address API] Current block:", currentBlock)
 
-    // Analyze transactions
-    let agentTxCount = 0
-    let asyncTxCount = 0
-    let totalGasUsed = BigInt(0)
-    let firstSeen = Date.now() / 1000
-    let lastSeen = 0
-
-    txList.forEach((tx: any, index: number) => {
-      console.log(`[Address API] TX ${index}:`, {
-        hash: tx.hash,
-        type: tx.type,
-        to: tx.to?.hash,
-        timestamp: tx.timestamp,
-      })
-
-      const timestamp = new Date(tx.timestamp).getTime() / 1000
-      if (timestamp < firstSeen) firstSeen = timestamp
-      if (timestamp > lastSeen) lastSeen = timestamp
-
-      // Detect async transactions (type 0x11 = 17, 0x12 = 18)
-      if (tx.type === 17 || tx.type === 18) {
-        asyncTxCount++
-        console.log(`[Address API] Found async tx: type ${tx.type}`)
-      }
-
-      // Check if interacting with known precompile addresses for agents
-      const toAddress = tx.to?.hash?.toLowerCase()
-      if (toAddress && toAddress.startsWith("0x00000000000000000000000000000000000008")) {
-        agentTxCount++
-        console.log(`[Address API] Found agent tx: to ${toAddress}`)
-      }
-
-      if (tx.gas_used) {
-        try {
-          totalGasUsed += BigInt(tx.gas_used)
-        } catch (e) {
-          console.error("[Address API] Gas parsing error:", e)
-        }
-      }
+    // Get address balance
+    const balance = await client.getBalance({ 
+      address: address as Address 
     })
+    console.log("[Address API] Balance:", balance)
 
-    console.log("[Address API] Analysis results:", {
-      totalTx: txList.length,
-      agentTx: agentTxCount,
-      asyncTx: asyncTxCount,
-      totalGas: totalGasUsed.toString(),
+    // Get transaction count (nonce)
+    const txCount = await client.getTransactionCount({ 
+      address: address as Address 
     })
+    console.log("[Address API] Transaction count:", txCount)
 
-    // Calculate level (every 100 transactions = 1 level)
-    const level = Math.floor(txList.length / 100) + 1
+    // Get code to check if it's a contract
+    const code = await client.getBytecode({ 
+      address: address as Address 
+    })
+    const isContract = code !== undefined && code !== '0x'
+    console.log("[Address API] Is contract:", isContract)
 
-    // Calculate rank based on actual transaction count
+    // Calculate level and rank
+    const level = Math.floor(Number(txCount) / 100) + 1
     let rank = "Initiate"
-    if (txList.length > 1000) rank = "Neural Master"
-    else if (txList.length > 500) rank = "Async Architect"
-    else if (txList.length > 200) rank = "Agent Operator"
-    else if (txList.length > 50) rank = "Network Contributor"
+    if (txCount > 1000n) rank = "Neural Master"
+    else if (txCount > 500n) rank = "Async Architect"
+    else if (txCount > 200n) rank = "Agent Operator"
+    else if (txCount > 50n) rank = "Network Contributor"
 
-    // Generate achievements based on actual data
+    // Generate achievements
     const achievements: string[] = []
-    if (txList.length >= 1) achievements.push("🌟 First Transaction")
-    if (txList.length >= 10) achievements.push("🎯 First 10 Transactions")
-    if (txList.length >= 100) achievements.push("💯 Century Club")
-    if (agentTxCount >= 5) achievements.push("🤖 Agent Caller")
-    if (asyncTxCount >= 5) achievements.push("⚡ Async Pioneer")
-    if (addressInfo?.is_contract) achievements.push("📜 Smart Contract")
-    if (txList.length >= 500) achievements.push("🔥 Power User")
+    if (txCount >= 1n) achievements.push("🌟 First Transaction")
+    if (txCount >= 10n) achievements.push("🎯 First 10 Transactions")
+    if (txCount >= 100n) achievements.push("💯 Century Club")
+    if (isContract) achievements.push("📜 Smart Contract")
+    if (txCount >= 500n) achievements.push("🔥 Power User")
 
-    // Calculate gas in a readable format
-    let gasDisplay = "0"
-    if (totalGasUsed > 0) {
-      const gasInGwei = Number(totalGasUsed) / 1e9
-      if (gasInGwei > 1000000) {
-        gasDisplay = (gasInGwei / 1000000).toFixed(2) + "M"
-      } else if (gasInGwei > 1000) {
-        gasDisplay = (gasInGwei / 1000).toFixed(2) + "K"
-      } else {
-        gasDisplay = gasInGwei.toFixed(2)
-      }
-    }
+    // Format balance
+    const balanceInRitual = Number(balance) / 1e18
+    const balanceFormatted = balanceInRitual.toFixed(4)
 
     const result = {
       address: address,
-      totalTransactions: txList.length,
-      agentTransactions: agentTxCount,
-      asyncTransactions: asyncTxCount,
-      firstSeen: Math.floor(firstSeen),
-      lastSeen: Math.floor(lastSeen || firstSeen),
-      totalGasUsed: gasDisplay,
+      totalTransactions: Number(txCount),
+      agentTransactions: 0, // Would need to parse transaction logs
+      asyncTransactions: 0, // Would need to parse transaction logs
+      firstSeen: Math.floor(Date.now() / 1000) - (Number(txCount) * 12), // Estimate
+      lastSeen: Math.floor(Date.now() / 1000),
+      totalGasUsed: "0", // Would need to fetch all transactions
       rank,
       level,
       achievements,
-      isContract: addressInfo?.is_contract || false,
-      isVerified: addressInfo?.is_verified || false,
-      balance: addressInfo?.coin_balance || "0",
-      recentTransactions: txList.slice(0, 10).map((tx: any) => ({
-        hash: tx.hash,
-        blockNumber: tx.block_number,
-        timestamp: tx.timestamp,
-        value: tx.value,
-        type: tx.type,
-      })),
+      isContract,
+      isVerified: false,
+      balance: balanceFormatted + " RITUAL",
+      recentTransactions: [],
     }
 
-    console.log("[Address API] Returning result:", JSON.stringify(result, null, 2))
+    console.log("[Address API] Success! Returning:", result)
     console.log("[Address API] ========================================")
 
     return NextResponse.json(result)
