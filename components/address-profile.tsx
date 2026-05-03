@@ -22,10 +22,21 @@ interface AddressProfileProps {
 }
 
 export function AddressProfile({ stats, onClose }: AddressProfileProps) {
-  if (!stats) return null
+  console.log("AddressProfile rendered with stats:", stats)
+  
+  if (!stats) {
+    console.log("AddressProfile: No stats, returning null")
+    return null
+  }
 
-  const agentPercentage = Math.round((stats.agentTransactions / stats.totalTransactions) * 100)
-  const asyncPercentage = Math.round((stats.asyncTransactions / stats.totalTransactions) * 100)
+  const agentPercentage = stats.totalTransactions > 0 
+    ? Math.round((stats.agentTransactions / stats.totalTransactions) * 100)
+    : 0
+  const asyncPercentage = stats.totalTransactions > 0
+    ? Math.round((stats.asyncTransactions / stats.totalTransactions) * 100)
+    : 0
+
+  console.log("AddressProfile: Rendering with percentages:", { agentPercentage, asyncPercentage })
 
   return (
     <AnimatePresence>

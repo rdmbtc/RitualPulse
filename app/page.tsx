@@ -76,10 +76,18 @@ export default function RitualPulsePage() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log("Address data:", data)
+        console.log("=== ADDRESS DATA RECEIVED ===")
+        console.log("Full data object:", JSON.stringify(data, null, 2))
+        console.log("Total transactions:", data.totalTransactions)
+        console.log("Agent transactions:", data.agentTransactions)
+        console.log("Async transactions:", data.asyncTransactions)
+        console.log("Level:", data.level)
+        console.log("Rank:", data.rank)
+        console.log("============================")
         
         // Check if we got valid data
         if (data && typeof data.totalTransactions !== 'undefined') {
+          console.log("Setting address stats with data:", data)
           setAddressStats(data)
         } else {
           console.error("Invalid data structure:", data)
