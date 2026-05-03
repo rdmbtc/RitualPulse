@@ -26,6 +26,19 @@ export function JarvisInterface({
 }: JarvisInterfaceProps) {
   const [messages, setMessages] = useState<JarvisMessage[]>([])
   const [messageId, setMessageId] = useState(0)
+  const [currentTime, setCurrentTime] = useState("")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    setCurrentTime(new Date().toLocaleTimeString())
+    
+    const interval = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString())
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   const addMessage = (text: string, type: JarvisMessage["type"] = "info") => {
     const id = messageId
@@ -66,6 +79,8 @@ export function JarvisInterface({
     if (networkIQ >= 100) return "text-chart-3"
     return "text-muted-foreground"
   }
+
+  if (!mounted) return null
 
   return (
     <>
@@ -172,7 +187,7 @@ export function JarvisInterface({
         transition={{ delay: 0.6 }}
       >
         <div className="space-y-1">
-          <div>{new Date().toLocaleTimeString()}</div>
+          <div suppressHydrationWarning>{currentTime}</div>
           <div className="text-primary">MONITORING_ACTIVE</div>
         </div>
       </motion.div>

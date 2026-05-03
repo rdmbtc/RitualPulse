@@ -210,15 +210,33 @@ function analyzeTransactions(block: any, agentTxs: any[], asyncTxs: any[]) {
 }
 
 export async function GET() {
+  console.log("[Ritual API] Starting request...")
+  
   try {
+    console.log("[Ritual API] Fetching data from Ritual explorer...")
+    
     const [blocks, stats, agentTxs, asyncTxs, validators, mempool] = await Promise.all([
-      fetchBlocks(),
-      fetchStats(),
-      fetchAgentTransactions(),
-      fetchAsyncTransactions(),
-      fetchValidators(),
-      fetchMempool(),
+      fetchBlocks().catch(e => { console.error("[Ritual API] Blocks error:", e); return [] }),
+      fetchStats().catch(e => { console.error("[Ritual API] Stats error:", e); return null }),
+      fetchAgentTransactions().catch(e => { console.error("[Ritual API] Agent txs error:", e); return [] }),
+      fetchAsyncTransactions().catch(e => { console.error("[Ritual API] Async txs error:", e); return [] }),
+      fetchValidators().catch(e => { console.error("[Ritual API] Validators error:", e); return [] }),
+      fetchMempool().catch(e => { console.error("[Ritual API] Mempool error:", e); return [] }),
     ])
+
+    console.log("[Ritual API] Fetched:", {
+      blocks: blocks.length,
+      agentTxs: agentTxs.length,
+      asyncTxs: asyncTxs.length,
+      validators: validators.length,
+      mempool: mempool.length,
+    })
+
+    // If no blocks, use fallback
+    if (blocks.length === 0) {
+      console.log("[Ritual API] No blocks fetched, using fallback data")
+      return getFallbackResponse()
+    }
 
     // Transform blocks with real agent/async analysis
     const transformedBlocks = blocks.slice(0, 20).map((block) => {
@@ -257,6 +275,8 @@ export async function GET() {
     const totalTransactions = parseInt(stats?.total_transactions || "0")
     const avgBlockTime = parseFloat(stats?.average_block_time || "0.2")
 
+    console.log("[Ritual API] Success! Returning data")
+
     return NextResponse.json({
       blocks: transformedBlocks,
       stats: {
@@ -280,41 +300,43 @@ export async function GET() {
       timestamp: Date.now(),
     })
   } catch (error) {
-    console.error("API error:", error)
-    
-    // Return fallback data
-    const now = Math.floor(Date.now() / 1000)
-    const fallbackBlocks = Array.from({ length: 10 }, (_, i) => ({
-      number: 14367000 - i,
-      timestamp: now - i * 0.2,
-      txCount: Math.floor(Math.random() * 10) + 2,
-      agentTxCount: Math.floor(Math.random() * 3),
-      asyncTxCount: Math.floor(Math.random() * 2),
-      hash: `0x${Math.random().toString(16).slice(2, 18)}...`,
-    }))
-
-    return NextResponse.json({
-      blocks: fallbackBlocks,
-      stats: {
-        networkIQ: 142,
-        agentsOnline: 7,
-        asyncPower: "ready" as const,
-        totalBlocks: 14367000,
-        totalTransactions: 28500000,
-        avgBlockTime: 207,
-        activeValidators: 40,
-        pendingTransactions: 4,
-        gasPrice: "0",
-        networkUtilization: 45,
-      },
-      raw: {
-        agentTransactions: 0,
-        asyncTransactions: 0,
-        validators: 0,
-        mempoolSize: 0,
-      },
-      timestamp: Date.now(),
-      fallback: true,
-    })
+    console.error("[Ritual API] Fatal error:", error)
+    return getFallbackResponse()
   }
+}
+
+function getFallbackResponse() {
+  const now = Math.floor(Date.now() / 1000)
+  const fallbackBlocks = Array.from({ length: 10 }, (_, i) => ({
+    number: 14367000 - i,
+    timestamp: now - Math.floor(i * 0.2),
+    txCount: Math.floor(Math.random() * 10) + 2,
+    agentTxCount: Math.floor(Math.random() * 3),
+    asyncTxCount: Math.floor(Math.random() * 2),
+    hash: `0x${Math.random().toString(16).slice(2, 18)}...`,
+  }))
+
+  return NextResponse.json({
+    blocks: fallbackBlocks,
+    stats: {
+      networkIQ: 142,
+      agentsOnline: 7,
+      asyncPower: "ready" as const,
+      totalBlocks: 14367000,
+      totalTransactions: 28500000,
+      avgBlockTime: 207,
+      activeValidators: 40,
+      pendingTransactions: 4,
+      gasPrice: "0",
+      networkUtilization: 45,
+    },
+    raw: {
+      agentTransactions: 0,
+      asyncTransactions: 0,
+      validators: 0,
+      mempoolSize: 0,
+    },
+    timestamp: Date.now(),
+    fallback: true,
+  })
 }
