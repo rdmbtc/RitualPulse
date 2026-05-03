@@ -52,14 +52,35 @@ export async function GET(
 
     // Fetch transactions
     console.log("[Address API] Fetching transactions...")
-    const transactionsResponse = await fetch(`${RITUAL_API_BASE}/addresses/${address}/transactions`, {
-      headers: { "Accept": "application/json" },
+    const transactionsUrl = `${RITUAL_API_BASE}/addresses/${address}/transactions`
+    console.log("[Address API] URL:", transactionsUrl)
+    
+    const transactionsResponse = await fetch(transactionsUrl, {
+      headers: { 
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0"
+      },
       cache: "no-store",
     })
     
     console.log("[Address API] Transactions status:", transactionsResponse.status)
-    const transactionsData = transactionsResponse.ok ? await transactionsResponse.json() : null
-    console.log("[Address API] Transactions data:", JSON.stringify(transactionsData, null, 2))
+    console.log("[Address API] Transactions headers:", Object.fromEntries(transactionsResponse.headers.entries()))
+    
+    const transactionsText = await transactionsResponse.text()
+    console.log("[Address API] Transactions raw response (first 500 chars):", transactionsText.substring(0, 500))
+    
+    let transactionsData = null
+    try {
+      transactionsData = JSON.parse(transactionsText)
+      console.log("[Address API] Transactions parsed successfully")
+      console.log("[Address API] Transactions keys:", Object.keys(transactionsData))
+      console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
+      if (transactionsData?.items?.length > 0) {
+        console.log("[Address API] First transaction:", JSON.stringify(transactionsData.items[0], null, 2))
+      }
+    } catch (e) {
+      console.error("[Address API] Failed to parse transactions JSON:", e)
+    }
 
     const txList = transactionsData?.items || []
     
