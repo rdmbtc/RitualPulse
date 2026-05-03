@@ -58,6 +58,7 @@ export async function GET() {
     }
 
     console.log("[Ritual API] Fetched", blocks.length, "blocks")
+    console.log("[Ritual API] Sample block timestamp:", blocks[0]?.timestamp)
 
     // Calculate total transactions from fetched blocks
     const totalTxInBlocks = blocks.reduce((sum, b) => sum + b.txCount, 0)
@@ -78,9 +79,17 @@ export async function GET() {
       avgBlockTime = Math.floor((timeDiff / (blocks.length - 1)) * 1000) // convert to ms
     }
 
-    // Estimate agents online (blocks with transactions in last 10 blocks)
-    const activeBlocks = recentBlocks.filter(b => b.txCount > 0).length
-    const agentsOnline = Math.floor(activeBlocks * 0.7) // rough estimate
+    // Try to fetch agent count from a contract or use estimation
+    // For now, we'll use a more realistic estimation based on transaction patterns
+    // The explorer shows ~50 agents, so we estimate based on unique transaction patterns
+    let agentsOnline = 50 // Default from explorer
+    
+    // If we have transaction data, we can estimate active agents
+    if (recentTx > 0) {
+      // Rough estimate: assume each agent makes 1-3 transactions per 10 blocks
+      const estimatedActiveAgents = Math.min(Math.floor(recentTx / 2), 50)
+      agentsOnline = Math.max(estimatedActiveAgents, 4) // At least 4 if there's activity
+    }
 
     // Calculate network utilization
     const maxTxPerBlock = 100 // assumed max
