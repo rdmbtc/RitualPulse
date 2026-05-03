@@ -35,38 +35,35 @@ export async function GET(
 ) {
   const address = params.address
 
+  console.log("[Address API] ========================================")
   console.log("[Address API] Searching for:", address)
 
   try {
-    // Fetch address info and transactions in parallel
-    const [addressInfo, transactions] = await Promise.all([
-      fetch(`${RITUAL_API_BASE}/addresses/${address}`, {
-        headers: { "Accept": "application/json" },
-        cache: "no-store",
-      }).then(res => {
-        console.log("[Address API] Address info status:", res.status)
-        return res.ok ? res.json() : null
-      }).catch(e => {
-        console.error("[Address API] Address info error:", e)
-        return null
-      }),
-      
-      fetch(`${RITUAL_API_BASE}/addresses/${address}/transactions`, {
-        headers: { "Accept": "application/json" },
-        cache: "no-store",
-      }).then(res => {
-        console.log("[Address API] Transactions status:", res.status)
-        return res.ok ? res.json() : null
-      }).catch(e => {
-        console.error("[Address API] Transactions error:", e)
-        return null
-      }),
-    ])
-
-    const txList = transactions?.items || []
+    // Fetch address info
+    console.log("[Address API] Fetching address info...")
+    const addressInfoResponse = await fetch(`${RITUAL_API_BASE}/addresses/${address}`, {
+      headers: { "Accept": "application/json" },
+      cache: "no-store",
+    })
     
-    console.log("[Address API] Found", txList.length, "transactions")
-    console.log("[Address API] Address info:", addressInfo)
+    console.log("[Address API] Address info status:", addressInfoResponse.status)
+    const addressInfo = addressInfoResponse.ok ? await addressInfoResponse.json() : null
+    console.log("[Address API] Address info data:", JSON.stringify(addressInfo, null, 2))
+
+    // Fetch transactions
+    console.log("[Address API] Fetching transactions...")
+    const transactionsResponse = await fetch(`${RITUAL_API_BASE}/addresses/${address}/transactions`, {
+      headers: { "Accept": "application/json" },
+      cache: "no-store",
+    })
+    
+    console.log("[Address API] Transactions status:", transactionsResponse.status)
+    const transactionsData = transactionsResponse.ok ? await transactionsResponse.json() : null
+    console.log("[Address API] Transactions data:", JSON.stringify(transactionsData, null, 2))
+
+    const txList = transactionsData?.items || []
+    
+    console.log("[Address API] Transaction count:", txList.length)
 
     // Analyze transactions
     let agentTxCount = 0
@@ -75,29 +72,45 @@ export async function GET(
     let firstSeen = Date.now() / 1000
     let lastSeen = 0
 
-    txList.forEach((tx: Transaction) => {
+    txList.forEach((tx: any, index: number) => {
+      console.log(`[Address API] TX ${index}:`, {
+        hash: tx.hash,
+        type: tx.type,
+        to: tx.to?.hash,
+        timestamp: tx.timestamp,
+      })
+
       const timestamp = new Date(tx.timestamp).getTime() / 1000
       if (timestamp < firstSeen) firstSeen = timestamp
       if (timestamp > lastSeen) lastSeen = timestamp
 
-      // Detect async transactions (type 0x11 = commitment, 0x12 = settlement)
-      if (tx.type === 17 || tx.type === 18) { // 0x11 = 17, 0x12 = 18
+      // Detect async transactions (type 0x11 = 17, 0x12 = 18)
+      if (tx.type === 17 || tx.type === 18) {
         asyncTxCount++
+        console.log(`[Address API] Found async tx: type ${tx.type}`)
       }
 
       // Check if interacting with known precompile addresses for agents
       const toAddress = tx.to?.hash?.toLowerCase()
-      if (toAddress?.startsWith("0x00000000000000000000000000000000000008")) {
+      if (toAddress && toAddress.startsWith("0x00000000000000000000000000000000000008")) {
         agentTxCount++
+        console.log(`[Address API] Found agent tx: to ${toAddress}`)
       }
 
       if (tx.gas_used) {
         try {
           totalGasUsed += BigInt(tx.gas_used)
         } catch (e) {
-          // Ignore invalid gas values
+          console.error("[Address API] Gas parsing error:", e)
         }
       }
+    })
+
+    console.log("[Address API] Analysis results:", {
+      totalTx: txList.length,
+      agentTx: agentTxCount,
+      asyncTx: asyncTxCount,
+      totalGas: totalGasUsed.toString(),
     })
 
     // Calculate level (every 100 transactions = 1 level)
@@ -112,13 +125,13 @@ export async function GET(
 
     // Generate achievements based on actual data
     const achievements: string[] = []
+    if (txList.length >= 1) achievements.push("🌟 First Transaction")
     if (txList.length >= 10) achievements.push("🎯 First 10 Transactions")
     if (txList.length >= 100) achievements.push("💯 Century Club")
     if (agentTxCount >= 5) achievements.push("🤖 Agent Caller")
     if (asyncTxCount >= 5) achievements.push("⚡ Async Pioneer")
     if (addressInfo?.is_contract) achievements.push("📜 Smart Contract")
     if (txList.length >= 500) achievements.push("🔥 Power User")
-    if (txList.length >= 1) achievements.push("🌟 First Transaction")
 
     // Calculate gas in a readable format
     let gasDisplay = "0"
@@ -133,15 +146,7 @@ export async function GET(
       }
     }
 
-    console.log("[Address API] Success! Returning data:", {
-      totalTx: txList.length,
-      agentTx: agentTxCount,
-      asyncTx: asyncTxCount,
-      level,
-      rank,
-    })
-
-    return NextResponse.json({
+    const result = {
       address: address,
       totalTransactions: txList.length,
       agentTransactions: agentTxCount,
@@ -155,16 +160,22 @@ export async function GET(
       isContract: addressInfo?.is_contract || false,
       isVerified: addressInfo?.is_verified || false,
       balance: addressInfo?.coin_balance || "0",
-      recentTransactions: txList.slice(0, 10).map((tx: Transaction) => ({
+      recentTransactions: txList.slice(0, 10).map((tx: any) => ({
         hash: tx.hash,
         blockNumber: tx.block_number,
         timestamp: tx.timestamp,
         value: tx.value,
         type: tx.type,
       })),
-    })
+    }
+
+    console.log("[Address API] Returning result:", JSON.stringify(result, null, 2))
+    console.log("[Address API] ========================================")
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[Address API] Fatal error:", error)
+    console.log("[Address API] ========================================")
     
     return NextResponse.json(
       { error: "Failed to fetch address data", message: String(error) },
