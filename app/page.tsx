@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { NeuralBrain } from "@/components/neural-brain"
+import { RitualLogo3D } from "@/components/ritual-logo-3d"
 import { MatrixRain } from "@/components/matrix-rain"
 import { NetworkIQ } from "@/components/network-iq"
 import { BlockFeed } from "@/components/block-feed"
@@ -60,15 +61,30 @@ export default function RitualPulsePage() {
     setIsSearching(true)
     
     try {
+      // Validate input
+      if (!query || query.length < 10) {
+        console.error("Invalid query")
+        setIsSearching(false)
+        return
+      }
+
+      console.log("Searching for:", query)
       const response = await fetch(`/api/address/${query}`)
+      
+      console.log("Response status:", response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log("Address data:", data)
         setAddressStats(data)
       } else {
-        console.error("Address not found")
+        const errorText = await response.text()
+        console.error("Address not found:", response.status, errorText)
+        alert("Address not found or invalid")
       }
     } catch (error) {
       console.error("Search failed:", error)
+      alert("Search failed. Please try again.")
     } finally {
       setIsSearching(false)
     }
@@ -120,8 +136,16 @@ export default function RitualPulsePage() {
       {/* Address Search */}
       <AddressSearch onSearch={handleSearch} isSearching={isSearching} />
 
-      {/* Main neural brain */}
+      {/* Main 3D Ritual Logo */}
       <div className="absolute inset-0 flex items-center justify-center">
+        <RitualLogo3D 
+          isPulsing={newBlockArrived} 
+          intensity={intensity}
+        />
+      </div>
+
+      {/* Neural Brain (smaller, in background) */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-20 scale-75">
         <NeuralBrain 
           isPulsing={newBlockArrived} 
           intensity={intensity}

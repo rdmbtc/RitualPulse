@@ -35,29 +35,44 @@ export async function GET(
 ) {
   const address = params.address
 
+  console.log("[Address API] Searching for:", address)
+
   try {
     // Fetch address info and transactions in parallel
     const [addressInfo, transactions] = await Promise.all([
       fetch(`${RITUAL_API_BASE}/addresses/${address}`, {
         headers: { "Accept": "application/json" },
         cache: "no-store",
-      }).then(res => res.ok ? res.json() : null),
+      }).then(res => {
+        console.log("[Address API] Address info status:", res.status)
+        return res.ok ? res.json() : null
+      }).catch(e => {
+        console.error("[Address API] Address info error:", e)
+        return null
+      }),
       
       fetch(`${RITUAL_API_BASE}/addresses/${address}/transactions`, {
         headers: { "Accept": "application/json" },
         cache: "no-store",
-      }).then(res => res.ok ? res.json() : null),
+      }).then(res => {
+        console.log("[Address API] Transactions status:", res.status)
+        return res.ok ? res.json() : null
+      }).catch(e => {
+        console.error("[Address API] Transactions error:", e)
+        return null
+      }),
     ])
-
-    if (!addressInfo && !transactions) {
-      return NextResponse.json(
-        { error: "Address not found" },
-        { status: 404 }
-      )
-    }
 
     const txList = transactions?.items || []
     
+    console.log("[Address API] Found", txList.length, "transactions")
+
+    // If no data at all, return demo data
+    if (!addressInfo && txList.length === 0) {
+      console.log("[Address API] No data found, returning demo")
+      return NextResponse.json(getDemoAddressData(address))
+    }
+
     // Analyze transactions
     let agentTxCount = 0
     let asyncTxCount = 0
@@ -106,6 +121,8 @@ export async function GET(
     if (addressInfo?.is_contract) achievements.push("📜 Smart Contract")
     if (txList.length >= 500) achievements.push("🔥 Power User")
 
+    console.log("[Address API] Success! Returning data")
+
     return NextResponse.json({
       address: address,
       totalTransactions: txList.length,
@@ -113,7 +130,7 @@ export async function GET(
       asyncTransactions: asyncTxCount,
       firstSeen: Math.floor(firstSeen),
       lastSeen: Math.floor(lastSeen || firstSeen),
-      totalGasUsed: (totalGasUsed / BigInt(1e9)).toString() + "M",
+      totalGasUsed: totalGasUsed > 0 ? (totalGasUsed / BigInt(1e9)).toString() + "M" : "0",
       rank,
       level,
       achievements,
@@ -128,29 +145,31 @@ export async function GET(
       })),
     })
   } catch (error) {
-    console.error("Failed to fetch address data:", error)
-    
-    // Return mock data for demo
-    return NextResponse.json({
-      address: address,
-      totalTransactions: 247,
-      agentTransactions: 42,
-      asyncTransactions: 18,
-      firstSeen: Math.floor(Date.now() / 1000) - 86400 * 30,
-      lastSeen: Math.floor(Date.now() / 1000),
-      totalGasUsed: "1.2M",
-      rank: "Agent Operator",
-      level: 3,
-      achievements: [
-        "🎯 First 10 Transactions",
-        "💯 Century Club",
-        "🤖 Agent Caller",
-        "⚡ Async Pioneer",
-      ],
-      isContract: false,
-      isVerified: false,
-      recentTransactions: [],
-      demo: true,
-    })
+    console.error("[Address API] Fatal error:", error)
+    return NextResponse.json(getDemoAddressData(address))
+  }
+}
+
+function getDemoAddressData(address: string) {
+  return {
+    address: address,
+    totalTransactions: 247,
+    agentTransactions: 42,
+    asyncTransactions: 18,
+    firstSeen: Math.floor(Date.now() / 1000) - 86400 * 30,
+    lastSeen: Math.floor(Date.now() / 1000),
+    totalGasUsed: "1.2M",
+    rank: "Agent Operator",
+    level: 3,
+    achievements: [
+      "🎯 First 10 Transactions",
+      "💯 Century Club",
+      "🤖 Agent Caller",
+      "⚡ Async Pioneer",
+    ],
+    isContract: false,
+    isVerified: false,
+    recentTransactions: [],
+    demo: true,
   }
 }
