@@ -83,13 +83,13 @@ export function AddressProfile({ stats, onClose }: AddressProfileProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Experience</span>
-                <span>{stats.totalTransactions} / {(stats.level + 1) * 100} txs</span>
+                <span>{stats.totalTransactions} / {(stats.level) * 100} txs</span>
               </div>
               <div className="h-2 bg-muted rounded overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-primary to-accent"
                   initial={{ width: 0 }}
-                  animate={{ width: `${(stats.totalTransactions % 100)}%` }}
+                  animate={{ width: `${((stats.totalTransactions % 100) / 100) * 100}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                 />
               </div>

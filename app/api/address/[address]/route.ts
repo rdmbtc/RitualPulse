@@ -66,12 +66,7 @@ export async function GET(
     const txList = transactions?.items || []
     
     console.log("[Address API] Found", txList.length, "transactions")
-
-    // If no data at all, return demo data
-    if (!addressInfo && txList.length === 0) {
-      console.log("[Address API] No data found, returning demo")
-      return NextResponse.json(getDemoAddressData(address))
-    }
+    console.log("[Address API] Address info:", addressInfo)
 
     // Analyze transactions
     let agentTxCount = 0
@@ -85,34 +80,37 @@ export async function GET(
       if (timestamp < firstSeen) firstSeen = timestamp
       if (timestamp > lastSeen) lastSeen = timestamp
 
-      // Detect agent transactions (type 0x11 or 0x12)
-      if (tx.type === 0x11 || tx.type === 0x12) {
-        if (tx.type === 0x11) asyncTxCount++
-        if (tx.type === 0x12) asyncTxCount++
+      // Detect async transactions (type 0x11 = commitment, 0x12 = settlement)
+      if (tx.type === 17 || tx.type === 18) { // 0x11 = 17, 0x12 = 18
+        asyncTxCount++
       }
 
-      // Simple heuristic: check if interacting with known precompile addresses
+      // Check if interacting with known precompile addresses for agents
       const toAddress = tx.to?.hash?.toLowerCase()
       if (toAddress?.startsWith("0x00000000000000000000000000000000000008")) {
         agentTxCount++
       }
 
       if (tx.gas_used) {
-        totalGasUsed += BigInt(tx.gas_used)
+        try {
+          totalGasUsed += BigInt(tx.gas_used)
+        } catch (e) {
+          // Ignore invalid gas values
+        }
       }
     })
 
     // Calculate level (every 100 transactions = 1 level)
     const level = Math.floor(txList.length / 100) + 1
 
-    // Calculate rank
+    // Calculate rank based on actual transaction count
     let rank = "Initiate"
     if (txList.length > 1000) rank = "Neural Master"
     else if (txList.length > 500) rank = "Async Architect"
     else if (txList.length > 200) rank = "Agent Operator"
     else if (txList.length > 50) rank = "Network Contributor"
 
-    // Generate achievements
+    // Generate achievements based on actual data
     const achievements: string[] = []
     if (txList.length >= 10) achievements.push("🎯 First 10 Transactions")
     if (txList.length >= 100) achievements.push("💯 Century Club")
@@ -120,8 +118,28 @@ export async function GET(
     if (asyncTxCount >= 5) achievements.push("⚡ Async Pioneer")
     if (addressInfo?.is_contract) achievements.push("📜 Smart Contract")
     if (txList.length >= 500) achievements.push("🔥 Power User")
+    if (txList.length >= 1) achievements.push("🌟 First Transaction")
 
-    console.log("[Address API] Success! Returning data")
+    // Calculate gas in a readable format
+    let gasDisplay = "0"
+    if (totalGasUsed > 0) {
+      const gasInGwei = Number(totalGasUsed) / 1e9
+      if (gasInGwei > 1000000) {
+        gasDisplay = (gasInGwei / 1000000).toFixed(2) + "M"
+      } else if (gasInGwei > 1000) {
+        gasDisplay = (gasInGwei / 1000).toFixed(2) + "K"
+      } else {
+        gasDisplay = gasInGwei.toFixed(2)
+      }
+    }
+
+    console.log("[Address API] Success! Returning data:", {
+      totalTx: txList.length,
+      agentTx: agentTxCount,
+      asyncTx: asyncTxCount,
+      level,
+      rank,
+    })
 
     return NextResponse.json({
       address: address,
@@ -130,12 +148,13 @@ export async function GET(
       asyncTransactions: asyncTxCount,
       firstSeen: Math.floor(firstSeen),
       lastSeen: Math.floor(lastSeen || firstSeen),
-      totalGasUsed: totalGasUsed > 0 ? (totalGasUsed / BigInt(1e9)).toString() + "M" : "0",
+      totalGasUsed: gasDisplay,
       rank,
       level,
       achievements,
       isContract: addressInfo?.is_contract || false,
       isVerified: addressInfo?.is_verified || false,
+      balance: addressInfo?.coin_balance || "0",
       recentTransactions: txList.slice(0, 10).map((tx: Transaction) => ({
         hash: tx.hash,
         blockNumber: tx.block_number,
@@ -146,7 +165,11 @@ export async function GET(
     })
   } catch (error) {
     console.error("[Address API] Fatal error:", error)
-    return NextResponse.json(getDemoAddressData(address))
+    
+    return NextResponse.json(
+      { error: "Failed to fetch address data", message: String(error) },
+      { status: 500 }
+    )
   }
 }
 
