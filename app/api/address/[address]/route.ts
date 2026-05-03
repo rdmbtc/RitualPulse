@@ -31,7 +31,7 @@ const client = createPublicClient({
 })
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: { params: Promise<{ address: string }> }
 ) {
   const { address } = await context.params
@@ -65,7 +65,7 @@ export async function GET(
     console.log("[Address API] Transaction count:", txCount)
 
     // Get code to check if it's a contract
-    const code = await client.getBytecode({ 
+    const code = await client.getCode({ 
       address: address as Address 
     })
     const isContract = code !== undefined && code !== '0x'
@@ -120,29 +120,5 @@ export async function GET(
       { error: "Failed to fetch address data", message: String(error) },
       { status: 500 }
     )
-  }
-}
-
-function getDemoAddressData(address: string) {
-  return {
-    address: address,
-    totalTransactions: 247,
-    agentTransactions: 42,
-    asyncTransactions: 18,
-    firstSeen: Math.floor(Date.now() / 1000) - 86400 * 30,
-    lastSeen: Math.floor(Date.now() / 1000),
-    totalGasUsed: "1.2M",
-    rank: "Agent Operator",
-    level: 3,
-    achievements: [
-      "🎯 First 10 Transactions",
-      "💯 Century Club",
-      "🤖 Agent Caller",
-      "⚡ Async Pioneer",
-    ],
-    isContract: false,
-    isVerified: false,
-    recentTransactions: [],
-    demo: true,
   }
 }

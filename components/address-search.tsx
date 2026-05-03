@@ -18,7 +18,7 @@ export function AddressSearch({ onSearch, isSearching }: AddressSearchProps) {
     setMounted(true)
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (query.trim()) {
       onSearch(query.trim())

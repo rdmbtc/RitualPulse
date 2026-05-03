@@ -186,6 +186,7 @@ export function RitualLogo3D({ isPulsing, intensity }: RitualLogo3DProps) {
           style={{
             background: i % 2 === 0 ? "var(--primary)" : "var(--accent)",
             boxShadow: `0 0 8px ${i % 2 === 0 ? "var(--glow-primary)" : "var(--glow-secondary)"}`,
+            transformOrigin: `${100 + i * 10}px center`,
           }}
           animate={{
             rotate: 360,
@@ -203,9 +204,6 @@ export function RitualLogo3D({ isPulsing, intensity }: RitualLogo3DProps) {
               ease: "easeInOut",
               delay: i * 0.2,
             },
-          }}
-          style={{
-            transformOrigin: `${100 + i * 10}px center`,
           }}
         />
       ))}
