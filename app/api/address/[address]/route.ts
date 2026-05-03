@@ -3,7 +3,8 @@ import { NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const RITUAL_API_BASE = "https://explorer.ritualfoundation.org/api/v2"
+const BLOCKSCOUT_API_BASE = "https://api.blockscout.com/1/api/v2"
+const BLOCKSCOUT_API_KEY = "proapi_fuIXq0ePVdFOrKwOVt16oONhXzA2blPvgYiUi8QDgNVWoFvSaSj59zVwBu4lzqLre_ebLbYTh"
 
 interface AddressInfo {
   hash: string
@@ -41,59 +42,39 @@ export async function GET(
   try {
     // Fetch address info
     console.log("[Address API] Fetching address info...")
-    const addressInfoResponse = await fetch(`${RITUAL_API_BASE}/addresses/${address}`, {
+    const addressInfoUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}?apikey=${BLOCKSCOUT_API_KEY}`
+    console.log("[Address API] URL:", addressInfoUrl.replace(BLOCKSCOUT_API_KEY, 'API_KEY'))
+    
+    const addressInfoResponse = await fetch(addressInfoUrl, {
       headers: { "Accept": "application/json" },
       cache: "no-store",
     })
     
     console.log("[Address API] Address info status:", addressInfoResponse.status)
     const addressInfo = addressInfoResponse.ok ? await addressInfoResponse.json() : null
-    console.log("[Address API] Address info data:", JSON.stringify(addressInfo, null, 2))
+    console.log("[Address API] Address info:", addressInfo ? "received" : "null")
 
     // Fetch transactions
     console.log("[Address API] Fetching transactions...")
+    const transactionsUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}/transactions?apikey=${BLOCKSCOUT_API_KEY}`
+    console.log("[Address API] Transactions URL:", transactionsUrl.replace(BLOCKSCOUT_API_KEY, 'API_KEY'))
     
-    // Try different endpoint formats
-    const endpoints = [
-      `${RITUAL_API_BASE}/addresses/${address}/transactions`,
-      `${RITUAL_API_BASE}/addresses/${address}/txs`,
-      `${RITUAL_API_BASE}/address/${address}/transactions`,
-    ]
+    const transactionsResponse = await fetch(transactionsUrl, {
+      headers: { "Accept": "application/json" },
+      cache: "no-store",
+    })
     
-    let transactionsData = null
-    let successUrl = null
+    console.log("[Address API] Transactions status:", transactionsResponse.status)
     
-    for (const url of endpoints) {
-      console.log("[Address API] Trying URL:", url)
-      try {
-        const response = await fetch(url, {
-          headers: { 
-            "Accept": "application/json",
-          },
-          cache: "no-store",
-        })
-        
-        console.log("[Address API] Response status:", response.status)
-        
-        if (response.ok) {
-          const text = await response.text()
-          console.log("[Address API] Response (first 500 chars):", text.substring(0, 500))
-          transactionsData = JSON.parse(text)
-          successUrl = url
-          console.log("[Address API] Success with URL:", url)
-          break
-        }
-      } catch (e) {
-        console.log("[Address API] Failed with URL:", url, e)
-      }
+    if (!transactionsResponse.ok) {
+      const errorText = await transactionsResponse.text()
+      console.error("[Address API] Transactions error:", errorText)
+      throw new Error(`Transactions API returned ${transactionsResponse.status}`)
     }
     
-    if (!transactionsData) {
-      console.log("[Address API] All transaction endpoints failed")
-    } else {
-      console.log("[Address API] Transactions data keys:", Object.keys(transactionsData))
-      console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
-    }
+    const transactionsData = await transactionsResponse.json()
+    console.log("[Address API] Transactions data keys:", Object.keys(transactionsData))
+    console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
 
     const txList = transactionsData?.items || []
     
