@@ -3,7 +3,8 @@ import { NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const BLOCKSCOUT_API_BASE = "https://api.blockscout.com/1/api/v2"
+// Use Ritual's own Blockscout instance
+const RITUAL_BLOCKSCOUT_BASE = "https://explorer.ritualfoundation.org/api/v2"
 const BLOCKSCOUT_API_KEY = "proapi_fuIXq0ePVdFOrKwOVt16oONhXzA2blPvgYiUi8QDgNVWoFvSaSj59zVwBu4lzqLre_ebLbYTh"
 
 interface AddressInfo {
@@ -32,9 +33,9 @@ interface Transaction {
 
 export async function GET(
   request: Request,
-  { params }: { params: { address: string } }
+  context: { params: Promise<{ address: string }> }
 ) {
-  const address = params.address
+  const { address } = await context.params
 
   console.log("[Address API] ========================================")
   console.log("[Address API] Searching for:", address)
@@ -42,8 +43,8 @@ export async function GET(
   try {
     // Fetch address info
     console.log("[Address API] Fetching address info...")
-    const addressInfoUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}?apikey=${BLOCKSCOUT_API_KEY}`
-    console.log("[Address API] URL:", addressInfoUrl.replace(BLOCKSCOUT_API_KEY, 'API_KEY'))
+    const addressInfoUrl = `${RITUAL_BLOCKSCOUT_BASE}/addresses/${address}`
+    console.log("[Address API] URL:", addressInfoUrl)
     
     const addressInfoResponse = await fetch(addressInfoUrl, {
       headers: { "Accept": "application/json" },
@@ -56,8 +57,8 @@ export async function GET(
 
     // Fetch transactions
     console.log("[Address API] Fetching transactions...")
-    const transactionsUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}/transactions?apikey=${BLOCKSCOUT_API_KEY}`
-    console.log("[Address API] Transactions URL:", transactionsUrl.replace(BLOCKSCOUT_API_KEY, 'API_KEY'))
+    const transactionsUrl = `${RITUAL_BLOCKSCOUT_BASE}/addresses/${address}/transactions`
+    console.log("[Address API] Transactions URL:", transactionsUrl)
     
     const transactionsResponse = await fetch(transactionsUrl, {
       headers: { "Accept": "application/json" },
@@ -68,8 +69,27 @@ export async function GET(
     
     if (!transactionsResponse.ok) {
       const errorText = await transactionsResponse.text()
-      console.error("[Address API] Transactions error:", errorText)
-      throw new Error(`Transactions API returned ${transactionsResponse.status}`)
+      console.error("[Address API] Transactions error response:", errorText)
+      console.error("[Address API] Status code:", transactionsResponse.status)
+      
+      // Return empty data instead of throwing error
+      return NextResponse.json({
+        address: address,
+        totalTransactions: 0,
+        agentTransactions: 0,
+        asyncTransactions: 0,
+        firstSeen: Math.floor(Date.now() / 1000),
+        lastSeen: Math.floor(Date.now() / 1000),
+        totalGasUsed: "0",
+        rank: "Initiate",
+        level: 1,
+        achievements: [],
+        isContract: false,
+        isVerified: false,
+        balance: "0",
+        recentTransactions: [],
+        error: `API returned ${transactionsResponse.status}`,
+      })
     }
     
     const transactionsData = await transactionsResponse.json()

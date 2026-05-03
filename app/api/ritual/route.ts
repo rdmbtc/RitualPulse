@@ -3,8 +3,8 @@ import { NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const BLOCKSCOUT_API_BASE = "https://api.blockscout.com/1/api/v2"
-const BLOCKSCOUT_API_KEY = "proapi_fuIXq0ePVdFOrKwOVt16oONhXzA2blPvgYiUi8QDgNVWoFvSaSj59zVwBu4lzqLre_ebLbYTh"
+// Use Ritual's own Blockscout instance
+const RITUAL_BLOCKSCOUT_BASE = "https://explorer.ritualfoundation.org/api/v2"
 
 interface RitualBlock {
   height: number
@@ -33,11 +33,11 @@ interface RitualStats {
   tvl?: string
 }
 
-// Fetch blocks from Blockscout API
+// Fetch blocks from Ritual Blockscout
 async function fetchBlocks(): Promise<RitualBlock[]> {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/blocks?apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/blocks`,
       {
         headers: {
           "Accept": "application/json",
@@ -72,7 +72,7 @@ async function fetchBlocks(): Promise<RitualBlock[]> {
 async function fetchStats(): Promise<RitualStats | null> {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/stats?apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/stats`,
       {
         headers: {
           "Accept": "application/json",
@@ -97,7 +97,7 @@ async function fetchStats(): Promise<RitualStats | null> {
 async function fetchAgentTransactions() {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/transactions?filter=agent&apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/transactions?filter=agent`,
       {
         headers: {
           "Accept": "application/json",
@@ -122,7 +122,7 @@ async function fetchAgentTransactions() {
 async function fetchAsyncTransactions() {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/transactions?filter=async&apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/transactions?filter=async`,
       {
         headers: {
           "Accept": "application/json",
@@ -147,7 +147,7 @@ async function fetchAsyncTransactions() {
 async function fetchValidators() {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/validators?apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/validators`,
       {
         headers: {
           "Accept": "application/json",
@@ -172,7 +172,7 @@ async function fetchValidators() {
 async function fetchMempool() {
   try {
     const response = await fetch(
-      `${BLOCKSCOUT_API_BASE}/transactions?filter=pending&apikey=${BLOCKSCOUT_API_KEY}`,
+      `${RITUAL_BLOCKSCOUT_BASE}/transactions?filter=pending`,
       {
         headers: {
           "Accept": "application/json",
