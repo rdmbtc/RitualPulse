@@ -35,8 +35,9 @@ interface RitualStats {
 // Fetch blocks from Ritual explorer API
 async function fetchBlocks(): Promise<RitualBlock[]> {
   try {
-    const response = await fetch(
-      `${RITUAL_API_BASE}/blocks?type=block`,
+    // Try without type parameter first
+    let response = await fetch(
+      `${RITUAL_API_BASE}/blocks`,
       {
         headers: {
           "Accept": "application/json",
@@ -44,6 +45,20 @@ async function fetchBlocks(): Promise<RitualBlock[]> {
         cache: "no-store",
       }
     )
+
+    // If that fails, try with type parameter
+    if (!response.ok) {
+      console.log("[Ritual API] Blocks without type failed, trying with type=block")
+      response = await fetch(
+        `${RITUAL_API_BASE}/blocks?type=block`,
+        {
+          headers: {
+            "Accept": "application/json",
+          },
+          cache: "no-store",
+        }
+      )
+    }
 
     if (!response.ok) {
       throw new Error(`Blocks API returned ${response.status}`)

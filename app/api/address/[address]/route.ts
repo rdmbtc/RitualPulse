@@ -52,34 +52,47 @@ export async function GET(
 
     // Fetch transactions
     console.log("[Address API] Fetching transactions...")
-    const transactionsUrl = `${RITUAL_API_BASE}/addresses/${address}/transactions`
-    console.log("[Address API] URL:", transactionsUrl)
     
-    const transactionsResponse = await fetch(transactionsUrl, {
-      headers: { 
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0"
-      },
-      cache: "no-store",
-    })
-    
-    console.log("[Address API] Transactions status:", transactionsResponse.status)
-    console.log("[Address API] Transactions headers:", Object.fromEntries(transactionsResponse.headers.entries()))
-    
-    const transactionsText = await transactionsResponse.text()
-    console.log("[Address API] Transactions raw response (first 500 chars):", transactionsText.substring(0, 500))
+    // Try different endpoint formats
+    const endpoints = [
+      `${RITUAL_API_BASE}/addresses/${address}/transactions`,
+      `${RITUAL_API_BASE}/addresses/${address}/txs`,
+      `${RITUAL_API_BASE}/address/${address}/transactions`,
+    ]
     
     let transactionsData = null
-    try {
-      transactionsData = JSON.parse(transactionsText)
-      console.log("[Address API] Transactions parsed successfully")
-      console.log("[Address API] Transactions keys:", Object.keys(transactionsData))
-      console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
-      if (transactionsData?.items?.length > 0) {
-        console.log("[Address API] First transaction:", JSON.stringify(transactionsData.items[0], null, 2))
+    let successUrl = null
+    
+    for (const url of endpoints) {
+      console.log("[Address API] Trying URL:", url)
+      try {
+        const response = await fetch(url, {
+          headers: { 
+            "Accept": "application/json",
+          },
+          cache: "no-store",
+        })
+        
+        console.log("[Address API] Response status:", response.status)
+        
+        if (response.ok) {
+          const text = await response.text()
+          console.log("[Address API] Response (first 500 chars):", text.substring(0, 500))
+          transactionsData = JSON.parse(text)
+          successUrl = url
+          console.log("[Address API] Success with URL:", url)
+          break
+        }
+      } catch (e) {
+        console.log("[Address API] Failed with URL:", url, e)
       }
-    } catch (e) {
-      console.error("[Address API] Failed to parse transactions JSON:", e)
+    }
+    
+    if (!transactionsData) {
+      console.log("[Address API] All transaction endpoints failed")
+    } else {
+      console.log("[Address API] Transactions data keys:", Object.keys(transactionsData))
+      console.log("[Address API] Transactions.items length:", transactionsData?.items?.length || 0)
     }
 
     const txList = transactionsData?.items || []
