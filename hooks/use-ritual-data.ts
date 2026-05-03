@@ -10,6 +10,10 @@ interface NetworkStats {
   totalBlocks: number
   totalTransactions: number
   avgBlockTime: number
+  activeValidators: number
+  pendingTransactions: number
+  gasPrice: string
+  networkUtilization: number
 }
 
 interface UseRitualDataReturn {
@@ -28,7 +32,11 @@ const DEFAULT_STATS: NetworkStats = {
   asyncPower: "charging",
   totalBlocks: 0,
   totalTransactions: 0,
-  avgBlockTime: 12,
+  avgBlockTime: 207,
+  activeValidators: 0,
+  pendingTransactions: 0,
+  gasPrice: "0",
+  networkUtilization: 0,
 }
 
 export function useRitualData(pollInterval = 5000): UseRitualDataReturn {
@@ -67,7 +75,7 @@ export function useRitualData(pollInterval = 5000): UseRitualDataReturn {
       
       lastBlockRef.current = latestBlockNum
     } catch (error) {
-      console.error("[v0] Failed to fetch ritual data:", error)
+      console.error("Failed to fetch ritual data:", error)
       setIsConnected(false)
     }
   }, [])

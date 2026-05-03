@@ -8,6 +8,7 @@ import { NetworkIQ } from "@/components/network-iq"
 import { BlockFeed } from "@/components/block-feed"
 import { GlitchOverlay } from "@/components/glitch-overlay"
 import { BlockAlert } from "@/components/block-alert"
+import { NetworkStats } from "@/components/network-stats"
 import { useRitualData } from "@/hooks/use-ritual-data"
 
 export default function RitualPulsePage() {
@@ -92,6 +93,16 @@ export default function RitualPulsePage() {
 
       {/* Block feed */}
       <BlockFeed blocks={blocks} />
+
+      {/* Network stats */}
+      <NetworkStats
+        avgBlockTime={stats.avgBlockTime}
+        activeValidators={stats.activeValidators}
+        pendingTransactions={stats.pendingTransactions}
+        totalBlocks={stats.totalBlocks}
+        totalTransactions={stats.totalTransactions}
+        networkUtilization={stats.networkUtilization}
+      />
 
       {/* Block arrival alert */}
       {showBlockAlert && (
