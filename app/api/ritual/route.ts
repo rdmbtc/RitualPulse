@@ -59,24 +59,46 @@ export async function GET() {
 
     console.log("[Ritual API] Fetched", blocks.length, "blocks")
 
-    // Calculate network IQ
+    // Calculate total transactions from fetched blocks
+    const totalTxInBlocks = blocks.reduce((sum, b) => sum + b.txCount, 0)
+    
+    // Calculate network IQ based on recent activity
     const recentBlocks = blocks.slice(0, 10)
-    const totalTx = recentBlocks.reduce((sum, b) => sum + b.txCount, 0)
-    const networkIQ = Math.min(80 + totalTx * 2, 200)
+    const recentTx = recentBlocks.reduce((sum, b) => sum + b.txCount, 0)
+    const networkIQ = Math.min(80 + recentTx * 2, 200)
+
+    // Estimate total transactions (approximate based on average)
+    const avgTxPerBlock = totalTxInBlocks / blocks.length
+    const estimatedTotalTx = Math.floor(Number(currentBlockNumber) * avgTxPerBlock)
+
+    // Calculate average block time from recent blocks
+    let avgBlockTime = 207 // default
+    if (blocks.length >= 2) {
+      const timeDiff = blocks[0].timestamp - blocks[blocks.length - 1].timestamp
+      avgBlockTime = Math.floor((timeDiff / (blocks.length - 1)) * 1000) // convert to ms
+    }
+
+    // Estimate agents online (blocks with transactions in last 10 blocks)
+    const activeBlocks = recentBlocks.filter(b => b.txCount > 0).length
+    const agentsOnline = Math.floor(activeBlocks * 0.7) // rough estimate
+
+    // Calculate network utilization
+    const maxTxPerBlock = 100 // assumed max
+    const utilization = Math.min(Math.floor((avgTxPerBlock / maxTxPerBlock) * 100), 100)
 
     return NextResponse.json({
       blocks,
       stats: {
         networkIQ,
-        agentsOnline: 0,
-        asyncPower: "ready" as const,
+        agentsOnline,
+        asyncPower: recentTx > 50 ? "overload" : recentTx > 20 ? "ready" : "charging",
         totalBlocks: Number(currentBlockNumber),
-        totalTransactions: 0,
-        avgBlockTime: 207,
-        activeValidators: 40,
-        pendingTransactions: 0,
+        totalTransactions: estimatedTotalTx,
+        avgBlockTime,
+        activeValidators: 40, // Would need validator endpoint
+        pendingTransactions: 0, // Would need mempool access
         gasPrice: "0",
-        networkUtilization: 0,
+        networkUtilization: utilization,
       },
       raw: {
         agentTransactions: 0,
