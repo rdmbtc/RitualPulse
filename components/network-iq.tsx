@@ -32,7 +32,7 @@ export function NetworkIQ({ iq, agentsOnline, asyncPower, latestBlock }: Network
 
   return (
     <motion.div 
-      className="fixed top-6 left-6 z-50 font-mono text-sm"
+      className="fixed top-32 left-6 z-50 font-mono text-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.5 }}

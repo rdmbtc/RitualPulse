@@ -39,13 +39,15 @@ export function NeuralBrain({ isPulsing, intensity, agentCount }: NeuralBrainPro
   const [activeSignals, setActiveSignals] = useState<Signal[]>([])
   const [brainRotation, setBrainRotation] = useState(0)
 
-  // Generate neuron positions in brain-like structure
+  // Generate neuron positions in brain-like structure with IQ-based density
   const neurons = useMemo<Neuron[]>(() => {
     const result: Neuron[] = []
+    const densityMultiplier = 1 + (intensity / 100) // More neurons when IQ is high
     
-    // Core neurons (inner brain stem)
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2
+    // Core neurons (brain stem) - intelligence core
+    const coreCount = Math.floor(8 * densityMultiplier)
+    for (let i = 0; i < coreCount; i++) {
+      const angle = (i / coreCount) * Math.PI * 2
       result.push({
         id: i,
         x: Math.cos(angle) * 30,
@@ -56,12 +58,13 @@ export function NeuralBrain({ isPulsing, intensity, agentCount }: NeuralBrainPro
       })
     }
     
-    // Mid layer neurons (limbic system)
-    for (let i = 0; i < 16; i++) {
-      const angle = (i / 16) * Math.PI * 2 + 0.1
+    // Mid layer neurons (limbic system) - processing layer
+    const midCount = Math.floor(16 * densityMultiplier)
+    for (let i = 0; i < midCount; i++) {
+      const angle = (i / midCount) * Math.PI * 2 + 0.1
       const radius = 70 + Math.sin(angle * 3) * 15
       result.push({
-        id: 8 + i,
+        id: coreCount + i,
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * (radius * 0.75),
         size: 4 + Math.random() * 3,
@@ -70,15 +73,15 @@ export function NeuralBrain({ isPulsing, intensity, agentCount }: NeuralBrainPro
       })
     }
     
-    // Outer cortex neurons (cerebral cortex shape)
-    for (let i = 0; i < 32; i++) {
-      const angle = (i / 32) * Math.PI * 2
-      // Create brain-like irregular shape
+    // Outer cortex neurons (cerebral cortex) - higher intelligence
+    const outerCount = Math.floor(32 * densityMultiplier)
+    for (let i = 0; i < outerCount; i++) {
+      const angle = (i / outerCount) * Math.PI * 2
       const baseRadius = 130
       const variation = Math.sin(angle * 2.5) * 20 + Math.cos(angle * 4) * 10
       const radius = baseRadius + variation
       result.push({
-        id: 24 + i,
+        id: coreCount + midCount + i,
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * (radius * 0.7) + Math.sin(angle * 2) * 15,
         size: 3 + Math.random() * 2,
@@ -87,26 +90,26 @@ export function NeuralBrain({ isPulsing, intensity, agentCount }: NeuralBrainPro
       })
     }
 
-    // Create connections
+    // Create connections - more connections = higher IQ
     result.forEach((neuron, idx) => {
       const connections: number[] = []
+      const maxConnections = Math.floor(4 * densityMultiplier)
       result.forEach((other, otherIdx) => {
         if (idx !== otherIdx) {
           const dist = Math.sqrt(
             Math.pow(neuron.x - other.x, 2) + 
             Math.pow(neuron.y - other.y, 2)
           )
-          // Connect nearby neurons
           if (dist < 80 && Math.random() > 0.6) {
             connections.push(otherIdx)
           }
         }
       })
-      neuron.connections = connections.slice(0, 4) // Max 4 connections
+      neuron.connections = connections.slice(0, maxConnections)
     })
 
     return result
-  }, [])
+  }, [intensity])
 
   // Generate synapses from neuron connections
   const synapses = useMemo<Synapse[]>(() => {
@@ -192,9 +195,34 @@ export function NeuralBrain({ isPulsing, intensity, agentCount }: NeuralBrainPro
   }, [intensity, neurons])
 
   const glowIntensity = 15 + (intensity * 0.5)
+  
+  // IQ level indicators
+  const iqLevel = Math.floor(50 + intensity * 1.5)
+  const iqStatus = 
+    iqLevel >= 180 ? "GENIUS" :
+    iqLevel >= 150 ? "BRILLIANT" :
+    iqLevel >= 120 ? "INTELLIGENT" :
+    iqLevel >= 90 ? "ACTIVE" : "DORMANT"
 
   return (
     <div className="relative flex items-center justify-center w-[400px] h-[400px]">
+      {/* IQ Level Display */}
+      <motion.div
+        className="absolute -top-16 left-1/2 -translate-x-1/2 text-center font-mono"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <div className="text-xs text-muted-foreground mb-1">Neural IQ</div>
+        <motion.div
+          className="text-4xl font-bold text-primary"
+          animate={{ scale: isPulsing ? [1, 1.1, 1] : 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {iqLevel}
+        </motion.div>
+        <div className="text-xs text-accent mt-1">{iqStatus}</div>
+      </motion.div>
       {/* Expanding pulse rings */}
       <AnimatePresence>
         {pulseRings.map((id) => (
