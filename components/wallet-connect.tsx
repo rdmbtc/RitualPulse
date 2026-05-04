@@ -29,6 +29,36 @@ interface WalletConnectProps {
   onDisconnect: () => void
 }
 
+// Get the Web3 provider from various wallet extensions
+const getProvider = () => {
+  if (typeof window === 'undefined') return null
+  
+  // Check for EIP-6963 providers (modern standard)
+  if (window.ethereum?.providers?.length) {
+    return window.ethereum.providers[0]
+  }
+  
+  // Check for standard ethereum provider
+  if (window.ethereum) {
+    return window.ethereum
+  }
+  
+  // Check for specific wallet providers
+  if (window.coinbaseWalletExtension) {
+    return window.coinbaseWalletExtension
+  }
+  
+  if (window.trustWallet) {
+    return window.trustWallet
+  }
+  
+  if (window.phantom?.ethereum) {
+    return window.phantom.ethereum
+  }
+  
+  return null
+}
+
 export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   const [address, setAddress] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -40,9 +70,10 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   }, [])
 
   const checkConnection = async () => {
-    if (typeof window.ethereum !== 'undefined') {
+    const provider = getProvider()
+    if (provider) {
       try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' })
+        const accounts = await provider.request({ method: 'eth_accounts' })
         if (accounts.length > 0) {
           setAddress(accounts[0])
           onConnect(accounts[0])
@@ -54,8 +85,10 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
   }
 
   const connectWallet = async () => {
-    if (typeof window.ethereum === 'undefined') {
-      alert('Please install MetaMask or another Web3 wallet')
+    const provider = getProvider()
+    
+    if (!provider) {
+      alert('Please install a Web3 wallet (MetaMask, Coinbase Wallet, Trust Wallet, Rainbow, etc.)')
       return
     }
 
@@ -63,20 +96,20 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
 
     try {
       // Request account access
-      const accounts = await window.ethereum.request({
+      const accounts = await provider.request({
         method: 'eth_requestAccounts',
       })
 
       // Switch to Ritual network
       try {
-        await window.ethereum.request({
+        await provider.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0x7BB' }], // 1979 in hex
         })
       } catch (switchError: any) {
         // Chain not added, add it
         if (switchError.code === 4902) {
-          await window.ethereum.request({
+          await provider.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
@@ -92,6 +125,8 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
               },
             ],
           })
+        } else {
+          throw switchError
         }
       }
 
@@ -99,7 +134,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       onConnect(accounts[0])
     } catch (error) {
       console.error('Error connecting wallet:', error)
-      alert('Failed to connect wallet')
+      alert('Failed to connect wallet. Please try again.')
     } finally {
       setIsConnecting(false)
     }

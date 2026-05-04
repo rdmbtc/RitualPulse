@@ -26,6 +26,36 @@ const TWEET_ABI = [
   },
 ] as const
 
+// Get the Web3 provider from various wallet extensions
+const getProvider = () => {
+  if (typeof window === 'undefined') return null
+  
+  // Check for EIP-6963 providers (modern standard)
+  if (window.ethereum?.providers?.length) {
+    return window.ethereum.providers[0]
+  }
+  
+  // Check for standard ethereum provider
+  if (window.ethereum) {
+    return window.ethereum
+  }
+  
+  // Check for specific wallet providers
+  if (window.coinbaseWalletExtension) {
+    return window.coinbaseWalletExtension
+  }
+  
+  if (window.trustWallet) {
+    return window.trustWallet
+  }
+  
+  if (window.phantom?.ethereum) {
+    return window.phantom.ethereum
+  }
+  
+  return null
+}
+
 interface TweetPublisherProps {
   address: string
 }
@@ -42,13 +72,19 @@ export function TweetPublisher({ address }: TweetPublisherProps) {
       return
     }
 
+    const provider = getProvider()
+    if (!provider) {
+      alert('Please install a Web3 wallet (MetaMask, Coinbase Wallet, Trust Wallet, Rainbow, etc.)')
+      return
+    }
+
     setIsPublishing(true)
     setTxHash(null)
 
     try {
       const client = createWalletClient({
         chain: ritual,
-        transport: custom(window.ethereum!),
+        transport: custom(provider),
       })
 
       const hash = await client.writeContract({
