@@ -9,8 +9,18 @@ next.user-config.*
 
 # Environment variables
 .env*.local
+.env
 
 # Common ignores
 node_modules
 .next/
 .DS_Store
+
+# Contract build files
+contracts/build/
+*.bin
+*.abi 
+
+.env 
+scripts/ 
+
