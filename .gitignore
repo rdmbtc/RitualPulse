@@ -23,4 +23,5 @@ contracts/build/
 
 .env 
 scripts/ 
-
+contracts/
+.vscode/ 

@@ -80,7 +80,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: '0x1ECF',
+                chainId: '0x7BB',
                 chainName: 'Ritual',
                 nativeCurrency: {
                   name: 'Ritual',
