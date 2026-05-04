@@ -53,7 +53,7 @@ export async function GET() {
         txCount: block.transactions.length,
         agentTxCount: 0, // Would need to analyze transactions
         asyncTxCount: 0, // Would need to analyze transactions
-        hash: block.hash || "",
+        hash: block.hash?.toString() || `0x${blockNumber.toString(16)}`,
       })
     }
 
@@ -73,10 +73,10 @@ export async function GET() {
     const estimatedTotalTx = Math.floor(Number(currentBlockNumber) * avgTxPerBlock)
 
     // Calculate average block time from recent blocks
-    let avgBlockTime = 207 // default
+    let avgBlockTime = 207 // default in milliseconds
     if (blocks.length >= 2) {
       const timeDiff = blocks[0].timestamp - blocks[blocks.length - 1].timestamp
-      avgBlockTime = Math.floor((timeDiff / (blocks.length - 1)) * 1000) // convert to ms
+      avgBlockTime = Math.floor((timeDiff / (blocks.length - 1)) * 1000) // convert to milliseconds for display
     }
 
     // Try to fetch agent count from a contract or use estimation
