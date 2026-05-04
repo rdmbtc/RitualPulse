@@ -93,12 +93,14 @@ export function UserContributions({ address }: UserContributionsProps) {
 
       const tweetData = await Promise.all(tweetPromises)
       
-      const formattedTweets = tweetData.map((tweet) => ({
-        id: tweet[3],
-        author: tweet[0],
-        content: tweet[1],
-        timestamp: tweet[2],
-      }))
+      const formattedTweets = tweetData
+        .filter((tweet) => tweet && tweet[0] && tweet[1] && tweet[2] && tweet[3]) // Filter out invalid tweets
+        .map((tweet) => ({
+          id: tweet[3],
+          author: tweet[0],
+          content: tweet[1],
+          timestamp: tweet[2],
+        }))
 
       setTweets(formattedTweets.reverse())
     } catch (error) {
@@ -142,7 +144,7 @@ export function UserContributions({ address }: UserContributionsProps) {
         <div className="space-y-4">
           {tweets.map((tweet, index) => (
             <motion.div
-              key={tweet.id.toString()}
+              key={tweet.id?.toString() || `tweet-${index}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
@@ -151,7 +153,7 @@ export function UserContributions({ address }: UserContributionsProps) {
               <p className="text-foreground mb-2">{tweet.content}</p>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{formatDate(tweet.timestamp)}</span>
-                <span className="font-mono">ID: {tweet.id.toString()}</span>
+                <span className="font-mono">ID: {tweet.id?.toString() || 'N/A'}</span>
               </div>
             </motion.div>
           ))}
