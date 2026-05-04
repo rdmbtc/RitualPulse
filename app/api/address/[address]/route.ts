@@ -7,7 +7,7 @@ export const revalidate = 0
 
 // Define Ritual chain
 const ritual = defineChain({
-  id: 7887, // Ritual chain ID
+  id: 1979, // Ritual chain ID
   name: 'Ritual',
   nativeCurrency: {
     decimals: 18,

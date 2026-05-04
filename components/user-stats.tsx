@@ -7,7 +7,7 @@ import { defineChain } from "viem"
 import { FileText, Coins, Activity } from "lucide-react"
 
 const ritual = defineChain({
-  id: 7887,
+  id: 1979,
   name: 'Ritual',
   nativeCurrency: { decimals: 18, name: 'Ritual', symbol: 'RITUAL' },
   rpcUrls: { default: { http: ['https://rpc.ritualfoundation.org'] } },

@@ -7,7 +7,7 @@ import { createPublicClient, createWalletClient, custom, http, type Address } fr
 import { defineChain } from "viem"
 
 const ritual = defineChain({
-  id: 7887,
+  id: 1979,
   name: 'Ritual',
   nativeCurrency: {
     decimals: 18,
@@ -71,7 +71,7 @@ export function WalletConnect({ onConnect, onDisconnect }: WalletConnectProps) {
       try {
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x1ECF' }], // 7887 in hex
+          params: [{ chainId: '0x7BB' }], // 1979 in hex
         })
       } catch (switchError: any) {
         // Chain not added, add it
